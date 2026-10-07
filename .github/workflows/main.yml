@@ -25,23 +25,9 @@ jobs:
 
           Restart-Service -Name TermService -Force
 
-      - name: Create RDP User with Secure Password
-        id: create-user
+      - name: Create RDP User
         run: |
-          Add-Type -AssemblyName System.Security
-          $charSet = @{
-              Upper   = [char[]](65..90)
-              Lower   = [char[]](97..122)
-              Number  = [char[]](48..57)
-              Special = ([char[]](33..47) + [char[]](58..64) +
-                         [char[]](91..96) + [char[]](123..126))
-          }
-          $rawPassword = @()
-          $rawPassword += $charSet.Upper | Get-Random -Count 4
-          $rawPassword += $charSet.Lower | Get-Random -Count 4
-          $rawPassword += $charSet.Number | Get-Random -Count 4
-          $rawPassword += $charSet.Special | Get-Random -Count 4
-          $password = -join ($rawPassword | Sort-Object { Get-Random })
+          $password = "${{ secrets.RDP_PASSWORD }}"
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
 
           New-LocalUser -Name "RDP" -Password $securePass -AccountNeverExpires
@@ -52,11 +38,6 @@ jobs:
               Write-Error "User creation failed"
               exit 1
           }
-
-          # Write password to step output (masked in logs)
-          "RDP_PASSWORD<<EOF" >> "$env:GITHUB_OUTPUT"
-          $password >> "$env:GITHUB_OUTPUT"
-          "EOF" >> "$env:GITHUB_OUTPUT"
 
       - name: Install Tailscale
         run: |
@@ -100,7 +81,7 @@ jobs:
           Write-Host "`n=== RDP ACCESS ==="
           Write-Host "Address: $env:TAILSCALE_IP"
           Write-Host "Username: RDP"
-          Write-Host "Password: ${{ steps.create-user.outputs.RDP_PASSWORD }}"
+          Write-Host "Password: (see secret RDP_PASSWORD)"
           Write-Host "==================`n"
 
           while ($true) {
